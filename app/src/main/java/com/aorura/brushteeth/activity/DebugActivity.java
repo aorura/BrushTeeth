@@ -17,6 +17,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.aorura.brushteeth.model.NotificationSpec;
+import com.aorura.brushteeth.model.NotificationType;
+
 import java.io.File;
 
 public class DebugActivity extends Activity {
