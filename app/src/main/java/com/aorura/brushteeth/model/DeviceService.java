@@ -1,9 +1,8 @@
-package com.aorura.brushteeth.service;
+package com.aorura.brushteeth.model;
 
 import android.support.annotation.Nullable;
 
 import com.aorura.brushteeth.devices.EventHandler;
-
 
 /**
  *
