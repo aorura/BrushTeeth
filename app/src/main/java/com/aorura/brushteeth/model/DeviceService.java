@@ -8,7 +8,7 @@ import com.aorura.brushteeth.devices.EventHandler;
  *
  */
 public interface DeviceService extends EventHandler {
-    static final String PREFIX = "nodomain.freeyourgadget.gadgetbridge.devices";
+    static final String PREFIX = "com.aorura.brushteeth.devices";
 
     static final String ACTION_START = PREFIX + ".action.start";
     static final String ACTION_CONNECT = PREFIX + ".action.connect";

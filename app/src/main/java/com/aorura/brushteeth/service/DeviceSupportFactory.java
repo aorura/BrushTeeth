@@ -8,13 +8,13 @@ import android.widget.Toast;
 import java.lang.reflect.Constructor;
 import java.util.EnumSet;
 
-import nodomain.freeyourgadget.gadgetbridge.GBException;
-import nodomain.freeyourgadget.gadgetbridge.R;
-import nodomain.freeyourgadget.gadgetbridge.impl.GBDevice;
-import nodomain.freeyourgadget.gadgetbridge.model.DeviceType;
-import nodomain.freeyourgadget.gadgetbridge.service.devices.miband.MiBandSupport;
-import nodomain.freeyourgadget.gadgetbridge.service.devices.pebble.PebbleSupport;
-import nodomain.freeyourgadget.gadgetbridge.util.GB;
+import com.aorura.brushteeth.GBException;
+import com.aorura.brushteeth.R;
+import com.aorura.brushteeth.impl.GBDevice;
+import com.aorura.brushteeth.model.DeviceType;
+import com.aorura.brushteeth.service.devices.miband.MiBandSupport;
+import com.aorura.brushteeth.service.devices.pebble.PebbleSupport;
+import com.aorura.brushteeth.util.GB;
 
 public class DeviceSupportFactory {
     private final BluetoothAdapter mBtAdapter;

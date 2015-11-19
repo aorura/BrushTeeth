@@ -13,7 +13,7 @@ import com.aorura.brushteeth.model.DeviceType;
 
 public class GBDevice implements Parcelable {
     public static final String ACTION_DEVICE_CHANGED
-            = "nodomain.freeyourgadget.gadgetbridge.gbdevice.action.device_changed";
+            = "com.aorura.brushteeth.gbdevice.action.device_changed";
     public static final Creator<GBDevice> CREATOR = new Creator<GBDevice>() {
         @Override
         public GBDevice createFromParcel(Parcel source) {

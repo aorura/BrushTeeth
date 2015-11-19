@@ -15,12 +15,31 @@ import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.widget.Toast;
 
+import com.aorura.brushteeth.externalevents.K9Receiver;
+import com.aorura.brushteeth.externalevents.SMSReceiver;
 import com.aorura.brushteeth.impl.GBDevice;
+import com.aorura.brushteeth.model.NotificationSpec;
+import com.aorura.brushteeth.model.NotificationType;
+import com.aorura.brushteeth.util.GB;
 
-import java.util.ArrayList;
-import java.util.UUID;
+import static com.aorura.brushteeth.model.DeviceService.ACTION_CONNECT;
+import static com.aorura.brushteeth.model.DeviceService.ACTION_DISCONNECT;
+import static com.aorura.brushteeth.model.DeviceService.ACTION_NOTIFICATION;
+import static com.aorura.brushteeth.model.DeviceService.ACTION_REQUEST_DEVICEINFO;
+import static com.aorura.brushteeth.model.DeviceService.ACTION_START;
+import static com.aorura.brushteeth.model.DeviceService.EXTRA_DEVICE_ADDRESS;
+import static com.aorura.brushteeth.model.DeviceService.EXTRA_NOTIFICATION_BODY;
+import static com.aorura.brushteeth.model.DeviceService.EXTRA_NOTIFICATION_ID;
+import static com.aorura.brushteeth.model.DeviceService.EXTRA_NOTIFICATION_PHONENUMBER;
+import static com.aorura.brushteeth.model.DeviceService.EXTRA_NOTIFICATION_SENDER;
+import static com.aorura.brushteeth.model.DeviceService.EXTRA_NOTIFICATION_SOURCENAME;
+import static com.aorura.brushteeth.model.DeviceService.EXTRA_NOTIFICATION_SUBJECT;
+import static com.aorura.brushteeth.model.DeviceService.EXTRA_NOTIFICATION_TITLE;
+import static com.aorura.brushteeth.model.DeviceService.EXTRA_NOTIFICATION_TYPE;
+import static com.aorura.brushteeth.model.DeviceService.EXTRA_PERFORM_PAIR;
 
 
 public class DeviceCommunicationService extends Service {
@@ -31,12 +50,9 @@ public class DeviceCommunicationService extends Service {
     private GBDevice mGBDevice = null;
     private DeviceSupport mDeviceSupport;
 
-    private PhoneCallReceiver mPhoneCallReceiver = null;
+
     private SMSReceiver mSMSReceiver = null;
     private K9Receiver mK9Receiver = null;
-    private PebbleReceiver mPebbleReceiver = null;
-    private MusicPlaybackReceiver mMusicPlaybackReceiver = null;
-    private TimeChangeReceiver mTimeChangeReceiver = null;
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -50,7 +66,7 @@ public class DeviceCommunicationService extends Service {
                     setReceiversEnableState(enableReceivers);
                     GB.updateNotification(mGBDevice.getName() + " " + mGBDevice.getStateString(), context);
                 } else {
-                    LOG.error("Got ACTION_DEVICE_CHANGED from unexpected device: " + mGBDevice);
+                    Log.d("Park", "Got ACTION_DEVICE_CHANGED from unexpected device: " + mGBDevice);
                 }
             }
         }
@@ -58,7 +74,7 @@ public class DeviceCommunicationService extends Service {
 
     @Override
     public void onCreate() {
-        LOG.debug("DeviceCommunicationService is being created");
+        Log.d("Park", "DeviceCommunicationService is being created");
         super.onCreate();
         LocalBroadcastManager.getInstance(this).registerReceiver(mReceiver, new IntentFilter(GBDevice.ACTION_DEVICE_CHANGED));
         mFactory = new DeviceSupportFactory(this);
@@ -68,7 +84,7 @@ public class DeviceCommunicationService extends Service {
     public synchronized int onStartCommand(Intent intent, int flags, int startId) {
 
         if (intent == null) {
-            LOG.info("no intent");
+            Log.d("park", "no intent");
             return START_NOT_STICKY;
         }
 
@@ -76,16 +92,16 @@ public class DeviceCommunicationService extends Service {
         boolean pair = intent.getBooleanExtra(EXTRA_PERFORM_PAIR, false);
 
         if (action == null) {
-            LOG.info("no action");
+            Log.d("Park", "no action");
             return START_NOT_STICKY;
         }
 
-        LOG.debug("Service startcommand: " + action);
+        Log.d("Park", "Service startcommand: " + action);
 
         if (!action.equals(ACTION_START) && !action.equals(ACTION_CONNECT)) {
             if (!mStarted) {
                 // using the service before issuing ACTION_START
-                LOG.info("Must start service with " + ACTION_START + " or " + ACTION_CONNECT + " before using it: " + action);
+                Log.d("Park", "Must start service with " + ACTION_START + " or " + ACTION_CONNECT + " before using it: " + action);
                 return START_NOT_STICKY;
             }
 
@@ -129,10 +145,10 @@ public class DeviceCommunicationService extends Service {
                                 deviceSupport.connect();
                             }
                         } else {
-                            GB.toast(this, getString(R.string.cannot_connect, "Can't create device support"), Toast.LENGTH_SHORT, GB.ERROR);
+                            GB.toast(this,"Can't create device support", Toast.LENGTH_SHORT, GB.ERROR);
                         }
                     } catch (Exception e) {
-                        GB.toast(this, getString(R.string.cannot_connect, e.getMessage()), Toast.LENGTH_SHORT, GB.ERROR, e);
+                        GB.toast(this,  e.getMessage(), Toast.LENGTH_SHORT, GB.ERROR, e);
                         setDeviceSupport(null);
                     }
                 } else if (mGBDevice != null) {
@@ -159,75 +175,12 @@ public class DeviceCommunicationService extends Service {
                 mDeviceSupport.onNotification(notificationSpec);
                 break;
             }
-            case ACTION_REBOOT: {
-                mDeviceSupport.onReboot();
-                break;
-            }
-            case ACTION_FETCH_ACTIVITY_DATA: {
-                mDeviceSupport.onFetchActivityData();
-                break;
-            }
+
             case ACTION_DISCONNECT: {
                 mDeviceSupport.dispose();
                 mDeviceSupport = null;
                 break;
             }
-            case ACTION_FIND_DEVICE: {
-                boolean start = intent.getBooleanExtra(EXTRA_FIND_START, false);
-                mDeviceSupport.onFindDevice(start);
-                break;
-            }
-            case ACTION_CALLSTATE:
-                ServiceCommand command = (ServiceCommand) intent.getSerializableExtra(EXTRA_CALL_COMMAND);
-
-                String phoneNumber = intent.getStringExtra(EXTRA_CALL_PHONENUMBER);
-                String callerName = null;
-                if (phoneNumber != null) {
-                    callerName = getContactDisplayNameByNumber(phoneNumber);
-                }
-                mDeviceSupport.onSetCallState(phoneNumber, callerName, command);
-                break;
-            case ACTION_SETTIME:
-                mDeviceSupport.onSetTime();
-                break;
-            case ACTION_SETMUSICINFO:
-                String artist = intent.getStringExtra(EXTRA_MUSIC_ARTIST);
-                String album = intent.getStringExtra(EXTRA_MUSIC_ALBUM);
-                String track = intent.getStringExtra(EXTRA_MUSIC_TRACK);
-                mDeviceSupport.onSetMusicInfo(artist, album, track);
-                break;
-            case ACTION_REQUEST_APPINFO:
-                mDeviceSupport.onAppInfoReq();
-                break;
-            case ACTION_REQUEST_SCREENSHOT:
-                mDeviceSupport.onScreenshotReq();
-                break;
-            case ACTION_STARTAPP: {
-                UUID uuid = (UUID) intent.getSerializableExtra(EXTRA_APP_UUID);
-                boolean start = intent.getBooleanExtra(EXTRA_APP_START, true);
-                mDeviceSupport.onAppStart(uuid, start);
-                break;
-            }
-            case ACTION_DELETEAPP: {
-                UUID uuid = (UUID) intent.getSerializableExtra(EXTRA_APP_UUID);
-                mDeviceSupport.onAppDelete(uuid);
-                break;
-            }
-            case ACTION_INSTALL:
-                Uri uri = intent.getParcelableExtra(EXTRA_URI);
-                if (uri != null) {
-                    LOG.info("will try to install app/fw");
-                    mDeviceSupport.onInstallApp(uri);
-                }
-                break;
-            case ACTION_SET_ALARMS:
-                ArrayList<Alarm> alarms = intent.getParcelableArrayListExtra(EXTRA_ALARMS);
-                mDeviceSupport.onSetAlarms(alarms);
-                break;
-            case ACTION_ENABLE_REALTIME_STEPS:
-                boolean enable = intent.getBooleanExtra(EXTRA_ENABLE_REALTIME_STEPS, false);
-                mDeviceSupport.onEnableRealtimeSteps(enable);
-                break;
         }
 
         return START_STICKY;
@@ -260,7 +213,7 @@ public class DeviceCommunicationService extends Service {
 
     private void start() {
         if (!mStarted) {
-            startForeground(GB.NOTIFICATION_ID, GB.createNotification(getString(R.string.gadgetbridge_running), this));
+            startForeground(GB.NOTIFICATION_ID, GB.createNotification("Gadgetbridge running", this));
             mStarted = true;
         }
     }
@@ -283,16 +236,10 @@ public class DeviceCommunicationService extends Service {
 
 
     private void setReceiversEnableState(boolean enable) {
-        LOG.info("Setting broadcast receivers to: " + enable);
+        Log.d("Park", "Setting broadcast receivers to: " + enable);
 
         if (enable) {
-            if (mPhoneCallReceiver == null) {
-                mPhoneCallReceiver = new PhoneCallReceiver();
-                IntentFilter filter = new IntentFilter();
-                filter.addAction("android.intent.action.PHONE_STATE");
-                filter.addAction("android.intent.action.NEW_OUTGOING_CALL");
-                registerReceiver(mPhoneCallReceiver, filter);
-            }
+
             if (mSMSReceiver == null) {
                 mSMSReceiver = new SMSReceiver();
                 registerReceiver(mSMSReceiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
@@ -304,26 +251,9 @@ public class DeviceCommunicationService extends Service {
                 filter.addAction("com.fsck.k9.intent.action.EMAIL_RECEIVED");
                 registerReceiver(mK9Receiver, filter);
             }
-            if (mPebbleReceiver == null) {
-                mPebbleReceiver = new PebbleReceiver();
-                registerReceiver(mPebbleReceiver, new IntentFilter("com.getpebble.action.SEND_NOTIFICATION"));
-            }
-            if (mMusicPlaybackReceiver == null) {
-                mMusicPlaybackReceiver = new MusicPlaybackReceiver();
-                registerReceiver(mMusicPlaybackReceiver, new IntentFilter("com.android.music.metachanged"));
-            }
-            if (mTimeChangeReceiver == null) {
-                mTimeChangeReceiver = new TimeChangeReceiver();
-                IntentFilter filter = new IntentFilter();
-                filter.addAction("android.intent.action.TIME_SET");
-                filter.addAction("android.intent.action.TIMEZONE_CHANGED");
-                registerReceiver(mTimeChangeReceiver, filter);
-            }
+
         } else {
-            if (mPhoneCallReceiver != null) {
-                unregisterReceiver(mPhoneCallReceiver);
-                mPhoneCallReceiver = null;
-            }
+
             if (mSMSReceiver != null) {
                 unregisterReceiver(mSMSReceiver);
                 mSMSReceiver = null;
@@ -332,18 +262,7 @@ public class DeviceCommunicationService extends Service {
                 unregisterReceiver(mK9Receiver);
                 mK9Receiver = null;
             }
-            if (mPebbleReceiver != null) {
-                unregisterReceiver(mPebbleReceiver);
-                mPebbleReceiver = null;
-            }
-            if (mMusicPlaybackReceiver != null) {
-                unregisterReceiver(mMusicPlaybackReceiver);
-                mMusicPlaybackReceiver = null;
-            }
-            if (mTimeChangeReceiver != null) {
-                unregisterReceiver(mTimeChangeReceiver);
-                mTimeChangeReceiver = null;
-            }
+
         }
     }
 

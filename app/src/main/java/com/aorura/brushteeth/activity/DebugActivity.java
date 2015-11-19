@@ -36,10 +36,10 @@ public class DebugActivity extends Activity {
     private DeviceService mDeviceService = null;
 
     public static final String ACTION_QUIT
-            = "nodomain.freeyourgadget.gadgetbridge.controlcenter.action.quit";
+            = "com.aorura.brushteeth.controlcenter.action.quit";
 
     public static final String ACTION_REFRESH_DEVICELIST
-            = "nodomain.freeyourgadget.gadgetbridge.controlcenter.action.set_version";
+            = "com.aorura.brushteeth.controlcenter.action.set_version";
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
